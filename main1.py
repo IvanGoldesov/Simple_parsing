@@ -1,6 +1,8 @@
 import requests
 import csv
 import re
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 from model import Product
 
@@ -21,18 +23,20 @@ def parser(url : str):
 
         while not error:
             print(counter)
-            #Получаем доступ ко всем кроссовкам
+            #Получаем доступ ко всем товарам
             catalog_items = soup.find_all('article', class_ = 'catalog__item')
 
-            #перебираем кроссовки
+            #перебираем товар
             for item in catalog_items:
                 
                 pricee = []
                 #Получаем ссылку на каждый товар отдельно
                 link = item.find('a', class_ = 'catalog__img-link').get('href')
+
+
                 #Выполняем запрос и переход на страницу каждого товара
-                res_link = requests.get(url = link)
-                soup_link = BeautifulSoup(res_link.text, 'lxml')
+                res_link = create_html_selenium(link)
+                soup_link = BeautifulSoup(res_link, 'lxml')
 
                 #Получаем цену товара
                 prices = item.find_all('bdi')
@@ -71,6 +75,9 @@ def parser(url : str):
                         size = size.find_all()
                         for s in range(1, len(size)):
                             sizes.append(size[s].get_text())
+                            
+                        if not sizes:
+                            sizes.append('None')
                     else:
                         sizes.append('None')
 
@@ -120,6 +127,28 @@ def write_csv(products : list[Product], name_file : str):
                 product.img,
                 product.link
             ])
+
+
+def create_html_selenium(url) -> any:
+    #Подключаем парсинг selenium
+    options = Options()
+
+    options.add_argument("--headless")
+
+    driver = webdriver.Chrome(options=options)
+    try:
+        driver.get(url=url)
+
+        with open('main.html', 'w', encoding='utf-8') as file:
+            file.write(driver.page_source)
+    except Exception as ex:
+            ...
+    finally:
+            driver.close()
+            driver.quit()
+    
+    with open('main.html', encoding='utf-8') as file:
+        return file.read()
 
 
 #Запуск основной части программы
